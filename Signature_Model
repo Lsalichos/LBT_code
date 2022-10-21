@@ -1,0 +1,95 @@
+set.seed(14752)
+
+library(ROCR)
+library(vip)
+library(glmnet)
+
+al=1
+wVAl = read.csv('Outfile1_24.csv', sep=',',header=TRUE)
+#wVAl = read.csv('Outfile_01_24.csv', sep=',',header=TRUE)
+#treat= read.csv('Outfile1_24treat.csv', sep=',',header=TRUE)
+
+
+genes=wVAl[6:ncol(wVAl)]
+criterion=wVAl[5]
+
+train_genes=as.matrix(genes[1:50,])
+val_genes=as.matrix(genes[51:86,])
+
+train_criterion=as.matrix(criterion[1:50,])
+val_criterion=as.matrix(criterion[51:86,])
+
+test=0
+
+for(i in 1:1000)
+{
+print(i)
+	trfit=cv.glmnet(x = train_genes, y = train_criterion, type.measure = "auc", nfolds = 4, family = "binomial", alpha=al, nlambda = 1000)	
+	best_lam_trfit<-trfit$lambda.min
+	lasso_best_trfit<- glmnet(train_genes, train_criterion, alpha = al, lambda = best_lam_trfit, family="binomial")
+
+	test1<-max(trfit$cvm)
+
+	if(test1>0.75)
+	{
+		
+		vector_auc <- vector()
+		vector_acc <- vector()	
+
+		pred <- predict(lasso_best_trfit, newx = val_genes, type = "response")	
+		y_pred_num <- ifelse(pred > 0.5, 1, 0)
+		y_pred <- factor(y_pred_num, levels=c(0, 1))
+		y_act<-val_criterion
+		y_mean<- mean(y_pred == y_act)
+		p <- predict(lasso_best_trfit, newx= val_genes, type="response")
+		pr <- prediction(p, val_criterion)
+		prf <- performance(pr, measure = "tpr", x.measure = "fpr")
+		auc <- performance(pr, measure = "auc")
+		auc <- auc@y.values[[1]]
+
+		
+
+		test2<-auc
+		
+		if(test2>0.7)
+		{
+	
+			
+nam <- paste("trfit","_", i,"_",al ,"_","criterion", sep = "")
+nam_best <- paste("lasso_best_trfit","_", i,"_",al ,"_","criterion", sep = "")
+assign(nam, trfit)
+assign(nam_best, lasso_best_trfit)
+			print("Good MODEL:")
+			print(paste("trfit","_", i,"_",al , "_","criterion",sep = ""))	
+			print(paste("lasso_best_trfit","_", i,"_",al , "_","criterion",sep = ""))
+			print(lasso_best_trfit)
+			print(coef(lasso_best_trfit))
+			print(max(trfit$cvm))
+			print(test2) 
+						
+									
+		}
+		
+
+		if(test2>test)
+		{
+			B_trfit<-trfit
+			B_best_trfit<-lasso_best_trfit
+			test=test2
+print(test1)
+print(test2) 			
+		}
+
+	}
+
+}
+
+print("BEST MODEL:")
+	print(B_best_trfit)
+	print(coef(B_best_trfit))
+	print(max(B_trfit$cvm))
+	
+	print("Upper and lower curve :")
+	print(B_trfit$cvup[which.max(B_trfit$cvm)])
+	print(B_trfit$cvlo[which.max(B_trfit$cvm)])
+
