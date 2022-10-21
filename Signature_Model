@@ -76,8 +76,7 @@ assign(nam_best, lasso_best_trfit)
 			B_trfit<-trfit
 			B_best_trfit<-lasso_best_trfit
 			test=test2
-print(test1)
-print(test2) 			
+		
 		}
 
 	}
